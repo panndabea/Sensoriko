@@ -27,7 +27,10 @@ const WAVE_SAMPLES = Math.max(2, CONFIG.WINDOW_SAMPLES);
 let gestures = [];
 let sensorActive = false;
 let isRecording = false;
+let recordingSessionActive = false;
+let recordingLabel = '';
 let recordBuffer = [];
+let recordedTemplates = [];
 let liveBuffer = [];
 let stepCounter = 0;
 let lastMatchTime = -Infinity;
@@ -202,74 +205,101 @@ function setMatchDisplay(label, sub, state) {
 
 // ── Recording ────────────────────────────────────────────────────────────────
 
-elBtnStart.addEventListener('click', () => {
+elBtnStart.addEventListener('pointerdown', event => {
+  event.preventDefault();
   const label = elGestureLabel.value.trim();
   if (!label) { alert('Please enter a gesture name first.'); return; }
   if (!sensorActive) { alert('Please enable motion sensors first.'); return; }
+  if (recordedTemplates.length >= CONFIG.RECORD_REPETITIONS) return;
 
-  isRecording   = true;
-  recordBuffer  = [];
-  elBtnStart.disabled      = true;
-  elBtnStop.disabled       = false;
-  elGestureLabel.disabled  = true;
-  elRecordStatus.textContent = `Recording… perform ${CONFIG.RECORD_REPETITIONS} repetitions, then stop`;
+  if (!recordingSessionActive) {
+    recordingSessionActive = true;
+    recordingLabel = label;
+    recordedTemplates = [];
+    elGestureLabel.disabled = true;
+    elBtnStop.disabled = false;
+  }
+
+  if (isRecording) return;
+  isRecording = true;
+  recordBuffer = [];
+  const rep = recordedTemplates.length + 1;
+  elRecordStatus.textContent = `Recording sample ${rep}/${CONFIG.RECORD_REPETITIONS}… keep holding Start`;
   elRecordStatus.className   = 'status-badge status-recording';
+  elBtnStart.textContent = '⏺ Recording… release';
 
-  // Safety auto-stop
-  recordTimer = setTimeout(stopRecording, CONFIG.MAX_RECORD_MS);
+  // Safety auto-stop per repetition
+  recordTimer = setTimeout(stopCurrentRepetition, CONFIG.MAX_RECORD_MS);
 });
 
-elBtnStop.addEventListener('click', stopRecording);
+window.addEventListener('pointerup', stopCurrentRepetition);
+window.addEventListener('pointercancel', stopCurrentRepetition);
+elBtnStop.addEventListener('click', cancelRecordingSession);
 
-function stopRecording() {
+function stopCurrentRepetition() {
   if (!isRecording) return;
   clearTimeout(recordTimer);
+  isRecording = false;
+  elBtnStart.textContent = '⏺ Hold to Record';
 
-  isRecording              = false;
-  elBtnStart.disabled      = false;
-  elBtnStop.disabled       = true;
-  elGestureLabel.disabled  = false;
-
-  if (recordBuffer.length < CONFIG.MIN_RECORD_SAMPLES_PER_REPETITION * CONFIG.RECORD_REPETITIONS) {
-    elRecordStatus.textContent = 'Too short — try again';
-    elRecordStatus.className   = 'status-badge status-inactive';
+  const rep = recordedTemplates.length + 1;
+  if (recordBuffer.length < CONFIG.MIN_RECORD_SAMPLES_PER_REPETITION) {
+    elRecordStatus.textContent = `Sample ${rep} too short — hold Start and try again`;
+    elRecordStatus.className = 'status-badge status-inactive';
     recordBuffer = [];
     return;
   }
 
-  const label    = elGestureLabel.value.trim();
-  const segments = splitRecordingIntoSegments(recordBuffer, CONFIG.RECORD_REPETITIONS);
-  const templates = segments
-    .map(segment => Preprocessing.process(segment))
-    .filter(template => template.length);
-
-  if (templates.length !== CONFIG.RECORD_REPETITIONS) {
-    elRecordStatus.textContent = 'Failed to process all repetitions — try again';
-    elRecordStatus.className   = 'status-badge status-inactive';
+  const template = Preprocessing.process(recordBuffer);
+  if (!template.length) {
+    elRecordStatus.textContent = `Sample ${rep} could not be processed — try again`;
+    elRecordStatus.className = 'status-badge status-inactive';
     recordBuffer = [];
     return;
   }
 
-  templates.forEach(template => {
-    gestures = Storage.addGesture(label, template);
+  recordedTemplates.push(template);
+  const samples = recordBuffer.length;
+  recordBuffer = [];
+
+  if (recordedTemplates.length < CONFIG.RECORD_REPETITIONS) {
+    const nextRep = recordedTemplates.length + 1;
+    elRecordStatus.textContent = `Saved sample ${recordedTemplates.length}/${CONFIG.RECORD_REPETITIONS} (${samples} samples). Hold Start for sample ${nextRep}.`;
+    elRecordStatus.className = 'status-badge status-active';
+    return;
+  }
+
+  recordedTemplates.forEach(savedTemplate => {
+    gestures = Storage.addGesture(recordingLabel, savedTemplate);
   });
   renderGestureList();
 
-  elRecordStatus.textContent = `Saved "${label}" (${templates.length} reps · ${recordBuffer.length} samples)`;
+  elRecordStatus.textContent = `Saved "${recordingLabel}" (${recordedTemplates.length} reps)`;
   elRecordStatus.className   = 'status-badge status-active';
-  elGestureLabel.value       = '';
-  recordBuffer               = [];
+  resetRecordingSession(true);
 }
 
-function splitRecordingIntoSegments(samples, parts) {
-  const segments = [];
-  const total = samples.length;
-  for (let i = 0; i < parts; i++) {
-    const start = Math.floor((i * total) / parts);
-    const end = Math.floor(((i + 1) * total) / parts);
-    segments.push(samples.slice(start, end));
+function cancelRecordingSession() {
+  if (!recordingSessionActive && !isRecording) return;
+  clearTimeout(recordTimer);
+  const hadProgress = recordedTemplates.length > 0;
+  resetRecordingSession(false);
+  elRecordStatus.textContent = hadProgress ? 'Recording canceled — start again' : 'Idle';
+  if (hadProgress) {
+    elRecordStatus.className = 'status-badge status-inactive';
   }
-  return segments;
+}
+
+function resetRecordingSession(clearLabel) {
+  isRecording = false;
+  recordingSessionActive = false;
+  recordingLabel = '';
+  recordBuffer = [];
+  recordedTemplates = [];
+  elBtnStart.textContent = '⏺ Hold to Record';
+  elBtnStop.disabled = true;
+  elGestureLabel.disabled = false;
+  if (clearLabel) elGestureLabel.value = '';
 }
 
 // ── Gesture list ─────────────────────────────────────────────────────────────
