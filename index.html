@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="description" content="Browser-based smartphone motion controller — record and recognize hand gestures in real time." />
+  <title>Sensoriko</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <header>
+      <h1>Sensoriko</h1>
+      <p class="subtitle">Smartphone Motion Controller</p>
+    </header>
+
+    <!-- ── 1. Sensor access ──────────────────────────────────────────── -->
+    <section id="sensor-section">
+      <h2>Motion Sensors</h2>
+
+      <button id="btn-enable-sensors">Enable Motion Sensors</button>
+      <div id="sensor-status" class="status-badge status-inactive">Sensors Inactive</div>
+
+      <div id="sensor-values" class="sensor-grid hidden">
+        <div class="sensor-item">
+          <span class="sensor-label">Accel X</span>
+          <span id="accel-x" class="sensor-value">0.00</span>
+        </div>
+        <div class="sensor-item">
+          <span class="sensor-label">Accel Y</span>
+          <span id="accel-y" class="sensor-value">0.00</span>
+        </div>
+        <div class="sensor-item">
+          <span class="sensor-label">Accel Z</span>
+          <span id="accel-z" class="sensor-value">0.00</span>
+        </div>
+        <div class="sensor-item">
+          <span class="sensor-label">Gyro α</span>
+          <span id="gyro-x" class="sensor-value">0.0</span>
+        </div>
+        <div class="sensor-item">
+          <span class="sensor-label">Gyro β</span>
+          <span id="gyro-y" class="sensor-value">0.0</span>
+        </div>
+        <div class="sensor-item">
+          <span class="sensor-label">Gyro γ</span>
+          <span id="gyro-z" class="sensor-value">0.0</span>
+        </div>
+        <div class="sensor-item full-width">
+          <span class="sensor-label">Accel Magnitude</span>
+          <span id="magnitude" class="sensor-value">0.00</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 2. Record a gesture ───────────────────────────────────────── -->
+    <section id="record-section">
+      <h2>Record Gesture</h2>
+
+      <input
+        type="text"
+        id="gesture-label"
+        placeholder="Gesture name (e.g. slash_left)"
+        maxlength="32"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      />
+
+      <div class="button-row">
+        <button id="btn-start-recording" disabled>⏺ Start</button>
+        <button id="btn-stop-recording"  disabled>⏹ Stop</button>
+      </div>
+
+      <div id="recording-status" class="status-badge status-inactive">Idle</div>
+    </section>
+
+    <!-- ── 3. Live match ─────────────────────────────────────────────── -->
+    <section id="match-section">
+      <h2>Live Match</h2>
+      <div class="match-display">
+        <div id="match-label"      class="match-label">—</div>
+        <div id="match-confidence" class="match-confidence"></div>
+        <div id="match-energy"     class="match-energy">Energy: —</div>
+      </div>
+    </section>
+
+    <!-- ── 4. Saved gestures ─────────────────────────────────────────── -->
+    <section id="gestures-section">
+      <h2>Saved Gestures</h2>
+
+      <div class="button-row">
+        <button id="btn-export">↑ Export JSON</button>
+        <button id="btn-import">↓ Import JSON</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none" />
+
+      <ul id="gesture-list"></ul>
+    </section>
+
+  </div><!-- /#app -->
+
+  <!-- Load modules in dependency order -->
+  <script src="sensor.js"></script>
+  <script src="preprocessing.js"></script>
+  <script src="matching.js"></script>
+  <script src="storage.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
