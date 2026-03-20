@@ -285,6 +285,16 @@ input:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+#energy-waveform {
+  width: 100%;
+  height: 90px;
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
 /* ── Gesture list ────────────────────────────────────────────────────────────── */
 
 #gesture-list {

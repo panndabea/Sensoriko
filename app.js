@@ -13,10 +13,12 @@ const CONFIG = {
   WINDOW_SAMPLES: 100,
   STEP_SIZE: 10,
   DTW_THRESHOLD: 1.0,
+  DTW_BAND_RADIUS: 5,
   COOLDOWN_MS: 1500,
   MIN_ENERGY: 2.0,
   MAX_RECORD_MS: 5000,
 };
+const WAVE_SAMPLES = Math.max(2, CONFIG.WINDOW_SAMPLES);
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -46,7 +48,10 @@ const elRecordStatus   = $('recording-status');
 const elMatchLabel     = $('match-label');
 const elMatchConf      = $('match-confidence');
 const elMatchEnergy    = $('match-energy');
+const elEnergyWaveform = $('energy-waveform');
 const elGestureList    = $('gesture-list');
+const waveCtx = elEnergyWaveform?.getContext ? elEnergyWaveform.getContext('2d') : null;
+const energyHistory = [];
 
 // ── Sensor ───────────────────────────────────────────────────────────────────
 
@@ -100,12 +105,53 @@ function onSample(s) {
   // Accumulate recording buffer
   if (isRecording) recordBuffer.push(s);
 
+  const instantEnergy = s.ax ** 2 + s.ay ** 2 + s.az ** 2;
+  energyHistory.push(instantEnergy);
+  if (energyHistory.length > WAVE_SAMPLES) energyHistory.shift();
+  drawEnergyWaveform();
+
   // Sliding-window matching
   stepCounter++;
   if (stepCounter >= CONFIG.STEP_SIZE) {
     stepCounter = 0;
     runLiveMatch();
   }
+}
+
+function drawEnergyWaveform() {
+  if (!waveCtx || !elEnergyWaveform) return;
+  const w = elEnergyWaveform.width;
+  const h = elEnergyWaveform.height;
+  waveCtx.clearRect(0, 0, w, h);
+
+  waveCtx.strokeStyle = '#334155';
+  waveCtx.lineWidth = 1;
+  waveCtx.beginPath();
+  waveCtx.moveTo(0, h - 1);
+  waveCtx.lineTo(w, h - 1);
+  waveCtx.stroke();
+
+  if (energyHistory.length < 2) return;
+  const maxVal = Math.max(CONFIG.MIN_ENERGY * 2, ...energyHistory);
+  waveCtx.strokeStyle = '#3b82f6';
+  waveCtx.lineWidth = 2;
+  waveCtx.beginPath();
+  for (let i = 0; i < energyHistory.length; i++) {
+    const x = (i / (WAVE_SAMPLES - 1)) * w;
+    const y = h - (energyHistory[i] / maxVal) * h;
+    if (i === 0) waveCtx.moveTo(x, y);
+    else waveCtx.lineTo(x, y);
+  }
+  waveCtx.stroke();
+
+  const thresholdY = h - (CONFIG.MIN_ENERGY / maxVal) * h;
+  waveCtx.strokeStyle = '#94a3b8';
+  waveCtx.setLineDash([4, 3]);
+  waveCtx.beginPath();
+  waveCtx.moveTo(0, thresholdY);
+  waveCtx.lineTo(w, thresholdY);
+  waveCtx.stroke();
+  waveCtx.setLineDash([]);
 }
 
 // ── Live matching ────────────────────────────────────────────────────────────
@@ -130,7 +176,12 @@ function runLiveMatch() {
   const processed = Preprocessing.process(liveBuffer);
   if (!processed.length) return;
 
-  const result = Matching.findBestMatch(processed, gestures, CONFIG.DTW_THRESHOLD);
+  const result = Matching.findBestMatch(
+    processed,
+    gestures,
+    CONFIG.DTW_THRESHOLD,
+    CONFIG.DTW_BAND_RADIUS
+  );
   if (!result) return;
 
   if (result.label !== 'unknown') {
@@ -222,6 +273,7 @@ function renderGestureList() {
 
     const time = g.createdAt ? new Date(g.createdAt).toLocaleTimeString() : '';
     const pts  = g.template.length;
+    const examples = Array.isArray(g.examples) ? g.examples.length : 0;
 
     const name = document.createElement('span');
     name.className   = 'gesture-name';
@@ -229,7 +281,7 @@ function renderGestureList() {
 
     const meta = document.createElement('span');
     meta.className   = 'gesture-meta';
-    meta.textContent = `${pts} pts · ${time}`;
+    meta.textContent = `${pts} pts · ${examples || '?'} ex · ${time}`;
 
     const del = document.createElement('button');
     del.className   = 'btn-delete';

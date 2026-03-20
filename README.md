@@ -48,6 +48,7 @@ Sensor Input  →  Recording buffer / Live ring buffer
 | `WINDOW_SAMPLES` | 100 | Sliding window ≈ 2 s at 50 Hz |
 | `STEP_SIZE` | 10 | Run matching every 10 new samples |
 | `DTW_THRESHOLD` | 1.0 | Max normalised DTW distance to accept a match |
+| `DTW_BAND_RADIUS` | 5 | Sakoe-Chiba DTW band radius (max warping offset) |
 | `COOLDOWN_MS` | 1500 | Minimum ms between two match events |
 | `MIN_ENERGY` | 2.0 | Minimum movement variance to attempt matching |
 | `MAX_RECORD_MS` | 5000 | Auto-stop recording after 5 s |
@@ -102,10 +103,8 @@ Sensoriko/
 
 ---
 
-## Suggested next steps
+## Notes
 
-- **v2 – Better matching**: add a Sakoe-Chiba band to DTW to constrain warping and reduce false positives.
-- **v2 – Multi-template averaging**: record several examples of each gesture and use the centroid as the template.
-- **v3 – Visual feedback**: add a real-time energy waveform using `<canvas>`.
-- **v3 – Game integration**: emit `CustomEvent` objects so any game loop can `addEventListener` for gesture triggers.
-- **v4 – PWA**: add a service worker + `manifest.json` so the app can be installed on the home screen and works offline.
+- DTW matching now supports a Sakoe-Chiba constraint via `CONFIG.DTW_BAND_RADIUS`.
+- Recording the same gesture label multiple times now accumulates examples and stores their centroid template.
+- The Live Match panel includes a real-time energy waveform rendered on `<canvas>`.
