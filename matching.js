@@ -15,22 +15,32 @@ const Matching = (() => {
     return Math.sqrt(sum);
   }
 
-  // Standard DTW.  Returns the total alignment cost divided by (n + m)
-  // so the score is independent of sequence length.
-  function dtw(seq1, seq2) {
+  // DTW with optional Sakoe-Chiba band. Returns total alignment cost divided
+  // by (n + m) so the score is independent of sequence length.
+  function dtw(seq1, seq2, bandRadius = null) {
     const n = seq1.length;
     const m = seq2.length;
     if (n === 0 || m === 0) return Infinity;
 
     // Use flat Float32Array for speed
     const dp = new Float32Array(n * m);
+    dp.fill(Infinity);
     dp[0] = _dist(seq1[0], seq2[0]);
 
-    for (let i = 1; i < n; i++) dp[i * m] = dp[(i - 1) * m] + _dist(seq1[i], seq2[0]);
-    for (let j = 1; j < m; j++) dp[j] = dp[j - 1] + _dist(seq1[0], seq2[j]);
+    const radius = Number.isFinite(bandRadius) ? Math.max(0, Math.floor(bandRadius)) : null;
+
+    const maxEdge = radius === null ? Math.max(n, m) : radius;
+    for (let i = 1; i < n && i <= maxEdge; i++) {
+      dp[i * m] = dp[(i - 1) * m] + _dist(seq1[i], seq2[0]);
+    }
+    for (let j = 1; j < m && j <= maxEdge; j++) {
+      dp[j] = dp[j - 1] + _dist(seq1[0], seq2[j]);
+    }
 
     for (let i = 1; i < n; i++) {
-      for (let j = 1; j < m; j++) {
+      const jStart = radius === null ? 1 : Math.max(1, i - radius);
+      const jEnd = radius === null ? m - 1 : Math.min(m - 1, i + radius);
+      for (let j = jStart; j <= jEnd; j++) {
         const best = Math.min(
           dp[(i - 1) * m + j],
           dp[i * m + (j - 1)],
@@ -46,7 +56,7 @@ const Matching = (() => {
   // Compare querySeq against all stored gesture templates.
   // Returns the best result: { label, distance, confidence } or
   // { label: 'unknown', distance, confidence: 0 } if nothing is close enough.
-  function findBestMatch(querySeq, gestures, threshold) {
+  function findBestMatch(querySeq, gestures, threshold, bandRadius = null) {
     if (!gestures || !gestures.length || !querySeq || !querySeq.length) {
       return null;
     }
@@ -56,7 +66,7 @@ const Matching = (() => {
 
     for (const g of gestures) {
       if (!g.template || !g.template.length) continue;
-      const d = dtw(querySeq, g.template);
+      const d = dtw(querySeq, g.template, bandRadius);
       if (d < bestDist) {
         bestDist = d;
         bestLabel = g.label;
