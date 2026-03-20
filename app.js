@@ -18,6 +18,7 @@ const CONFIG = {
   MIN_ENERGY: 2.0,
   MAX_RECORD_MS: 5000,
   RECORD_REPETITIONS: 3,
+  MIN_RECORD_SAMPLES_PER_REPETITION: 10,
 };
 const WAVE_SAMPLES = Math.max(2, CONFIG.WINDOW_SAMPLES);
 
@@ -229,7 +230,7 @@ function stopRecording() {
   elBtnStop.disabled       = true;
   elGestureLabel.disabled  = false;
 
-  if (recordBuffer.length < 10 * CONFIG.RECORD_REPETITIONS) {
+  if (recordBuffer.length < CONFIG.MIN_RECORD_SAMPLES_PER_REPETITION * CONFIG.RECORD_REPETITIONS) {
     elRecordStatus.textContent = 'Too short — try again';
     elRecordStatus.className   = 'status-badge status-inactive';
     recordBuffer = [];
@@ -243,7 +244,7 @@ function stopRecording() {
     .filter(template => template.length);
 
   if (templates.length !== CONFIG.RECORD_REPETITIONS) {
-    elRecordStatus.textContent = 'Processing failed — try again';
+    elRecordStatus.textContent = 'Failed to process all repetitions — try again';
     elRecordStatus.className   = 'status-badge status-inactive';
     recordBuffer = [];
     return;
