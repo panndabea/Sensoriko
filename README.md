@@ -86,7 +86,7 @@ Sensoriko/
 3. **On a real smartphone** (iOS Safari or Android Chrome):
    - Open the local URL (same WiFi network, or use a tool like `ngrok`).
    - Tap **Enable Motion Sensors** and grant permission.
-   - Enter a gesture name, tap **⏺ Start**, perform the gesture, tap **⏹ Stop**.
+   - Enter a gesture name, tap **⏺ Start**, perform the movement **three times**, then tap **⏹ Stop**.
    - Repeat for each gesture you want to recognize.
    - Keep the phone active — the **Live Match** panel updates in real time.
 

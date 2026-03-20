@@ -17,6 +17,7 @@ const CONFIG = {
   COOLDOWN_MS: 1500,
   MIN_ENERGY: 2.0,
   MAX_RECORD_MS: 5000,
+  RECORD_REPETITIONS: 3,
 };
 const WAVE_SAMPLES = Math.max(2, CONFIG.WINDOW_SAMPLES);
 
@@ -210,7 +211,7 @@ elBtnStart.addEventListener('click', () => {
   elBtnStart.disabled      = true;
   elBtnStop.disabled       = false;
   elGestureLabel.disabled  = true;
-  elRecordStatus.textContent = 'Recording…';
+  elRecordStatus.textContent = `Recording… perform ${CONFIG.RECORD_REPETITIONS} repetitions, then stop`;
   elRecordStatus.className   = 'status-badge status-recording';
 
   // Safety auto-stop
@@ -228,7 +229,7 @@ function stopRecording() {
   elBtnStop.disabled       = true;
   elGestureLabel.disabled  = false;
 
-  if (recordBuffer.length < 10) {
+  if (recordBuffer.length < 10 * CONFIG.RECORD_REPETITIONS) {
     elRecordStatus.textContent = 'Too short — try again';
     elRecordStatus.className   = 'status-badge status-inactive';
     recordBuffer = [];
@@ -236,22 +237,38 @@ function stopRecording() {
   }
 
   const label    = elGestureLabel.value.trim();
-  const template = Preprocessing.process(recordBuffer);
+  const segments = splitRecordingIntoSegments(recordBuffer, CONFIG.RECORD_REPETITIONS);
+  const templates = segments
+    .map(segment => Preprocessing.process(segment))
+    .filter(template => template.length);
 
-  if (!template.length) {
+  if (templates.length !== CONFIG.RECORD_REPETITIONS) {
     elRecordStatus.textContent = 'Processing failed — try again';
     elRecordStatus.className   = 'status-badge status-inactive';
     recordBuffer = [];
     return;
   }
 
-  gestures = Storage.addGesture(label, template);
+  templates.forEach(template => {
+    gestures = Storage.addGesture(label, template);
+  });
   renderGestureList();
 
-  elRecordStatus.textContent = `Saved "${label}" (${recordBuffer.length} samples)`;
+  elRecordStatus.textContent = `Saved "${label}" (${templates.length} reps · ${recordBuffer.length} samples)`;
   elRecordStatus.className   = 'status-badge status-active';
   elGestureLabel.value       = '';
   recordBuffer               = [];
+}
+
+function splitRecordingIntoSegments(samples, parts) {
+  const segments = [];
+  const total = samples.length;
+  for (let i = 0; i < parts; i++) {
+    const start = Math.floor((i * total) / parts);
+    const end = Math.floor(((i + 1) * total) / parts);
+    segments.push(samples.slice(start, end));
+  }
+  return segments;
 }
 
 // ── Gesture list ─────────────────────────────────────────────────────────────
