@@ -273,7 +273,7 @@ function renderGestureList() {
 
     const time = g.createdAt ? new Date(g.createdAt).toLocaleTimeString() : '';
     const pts  = g.template.length;
-    const examples = Array.isArray(g.examples) ? g.examples.length : 0;
+    const examples = Array.isArray(g.examples) ? g.examples.length : undefined;
 
     const name = document.createElement('span');
     name.className   = 'gesture-name';
@@ -281,7 +281,7 @@ function renderGestureList() {
 
     const meta = document.createElement('span');
     meta.className   = 'gesture-meta';
-    meta.textContent = `${pts} pts · ${examples || '?'} ex · ${time}`;
+    meta.textContent = `${pts} pts · ${examples ?? '?'} ex · ${time}`;
 
     const del = document.createElement('button');
     del.className   = 'btn-delete';

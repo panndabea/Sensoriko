@@ -29,11 +29,11 @@ const Matching = (() => {
 
     const radius = Number.isFinite(bandRadius) ? Math.max(0, Math.floor(bandRadius)) : null;
 
-    const maxEdge = radius === null ? Math.max(n, m) : radius;
-    for (let i = 1; i < n && i <= maxEdge; i++) {
+    const edgeInitLimit = radius === null ? Math.max(n, m) : radius;
+    for (let i = 1; i < n && i <= edgeInitLimit; i++) {
       dp[i * m] = dp[(i - 1) * m] + _dist(seq1[i], seq2[0]);
     }
-    for (let j = 1; j < m && j <= maxEdge; j++) {
+    for (let j = 1; j < m && j <= edgeInitLimit; j++) {
       dp[j] = dp[j - 1] + _dist(seq1[0], seq2[j]);
     }
 
